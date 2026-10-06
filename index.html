@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Prezunic Alphaville · Escala Operacional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+<style>
+/* ===================== DESIGN TOKENS ===================== */
+:root{
+  --bg:#07080b; --bg2:#0c0e13; --surface:#11141b; --surface2:#171b24; --line:#232836; --line2:#2e3445;
+  --text:#eef0f5; --muted:#8a91a3; --dim:#5b6274;
+  --gold:#d9b46a; --gold2:#f1d9a3; --cyan:#5fd4e6; --green:#5fe0a1; --rose:#f2788a; --violet:#a99cf5;
+  --r-sm:8px; --r:14px; --r-lg:20px;
+  --sh-1:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -12px rgba(0,0,0,.7);
+  --sh-gold:0 0 0 1px rgba(217,180,106,.35),0 18px 40px -18px rgba(217,180,106,.45);
+  --fs-xs:.72rem; --fs-sm:.84rem; --fs-md:.95rem; --fs-lg:1.2rem; --fs-xl:1.7rem; --fs-2xl:2.4rem;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{background:radial-gradient(1200px 600px at 85% -10%,rgba(217,180,106,.10),transparent 60%),radial-gradient(900px 500px at -10% 110%,rgba(95,212,230,.07),transparent 60%),var(--bg);min-height:100vh}
+.mono{font-family:"JetBrains Mono",monospace}
+.card{background:linear-gradient(180deg,var(--surface),var(--bg2));border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1);transition:border-color .25s,transform .25s,box-shadow .25s}
+.card.hov:hover{border-color:var(--line2);transform:translateY(-2px)}
+.eyebrow{font-size:var(--fs-xs);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.gold{color:var(--gold)} .muted{color:var(--muted)} .dim{color:var(--dim)}
+.gtext{background:linear-gradient(90deg,var(--gold2),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn{display:inline-flex;align-items:center;gap:.45rem;padding:.55rem .95rem;border-radius:10px;font-size:var(--fs-sm);font-weight:600;border:1px solid var(--line2);background:var(--surface2);color:var(--text);transition:all .2s;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--gold);color:var(--gold2)}
+.btn-gold{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1a1408;border-color:transparent;box-shadow:var(--sh-gold)}
+.btn-gold:hover{color:#1a1408;filter:brightness(1.07)}
+.btn-wa{background:rgba(95,224,161,.1);border-color:rgba(95,224,161,.35);color:var(--green)}
+.btn-wa:hover{background:rgba(95,224,161,.18);color:var(--green);border-color:var(--green)}
+.btn-sm{padding:.35rem .6rem;font-size:var(--fs-xs);border-radius:8px}
+.btn-danger:hover{border-color:var(--rose);color:var(--rose)}
+.inp{background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:.55rem .75rem;color:var(--text);font-size:var(--fs-sm);outline:none;transition:border-color .2s;width:100%}
+.inp:focus{border-color:var(--gold)}
+select.inp option{background:var(--surface)}
+.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.2rem .5rem;border-radius:999px;border:1px solid}
+.b-lead{color:var(--gold2);border-color:rgba(217,180,106,.4);background:rgba(217,180,106,.08)}
+.b-off{color:var(--rose);border-color:rgba(242,120,138,.35);background:rgba(242,120,138,.07)}
+.b-on{color:var(--cyan);border-color:rgba(95,212,230,.35);background:rgba(95,212,230,.07)}
+.chip{display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .6rem;border-radius:8px;font-size:var(--fs-sm);background:var(--surface2);border:1px solid var(--line);transition:all .2s}
+.chip.lead{border-color:rgba(217,180,106,.35);color:var(--gold2)}
+.chip.off{border-color:rgba(242,120,138,.3);color:#f6a9b4}
+.chip button{opacity:.5} .chip button:hover{opacity:1;color:var(--rose)}
+.time{font-family:"JetBrains Mono";font-size:var(--fs-xs);color:var(--cyan);background:rgba(95,212,230,.07);border:1px solid rgba(95,212,230,.2);padding:.15rem .45rem;border-radius:6px}
+.nav-i{display:flex;align-items:center;gap:.7rem;padding:.65rem .85rem;border-radius:12px;color:var(--muted);font-weight:600;font-size:var(--fs-sm);cursor:pointer;transition:all .2s;border:1px solid transparent}
+.nav-i:hover{color:var(--text);background:var(--surface)}
+.nav-i.on{color:var(--gold2);background:linear-gradient(90deg,rgba(217,180,106,.12),transparent);border-color:rgba(217,180,106,.2)}
+.seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{padding:.4rem .8rem;border-radius:9px;font-size:var(--fs-sm);font-weight:600;color:var(--muted);transition:all .2s}
+.seg button.on{background:var(--surface2);color:var(--gold2);box-shadow:0 0 0 1px var(--line2)}
+.fade{animation:fade .45s cubic-bezier(.2,.7,.2,1) both}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.stagger>*{animation:fade .5s cubic-bezier(.2,.7,.2,1) both}
+.stagger>*:nth-child(2){animation-delay:.05s}.stagger>*:nth-child(3){animation-delay:.1s}.stagger>*:nth-child(4){animation-delay:.15s}.stagger>*:nth-child(5){animation-delay:.2s}.stagger>*:nth-child(6){animation-delay:.25s}.stagger>*:nth-child(7){animation-delay:.3s}
+.cal-cell{min-height:92px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);padding:.5rem;cursor:pointer;transition:all .2s;position:relative}
+.cal-cell:hover{border-color:var(--gold);transform:translateY(-1px)}
+.cal-cell.sun{background:linear-gradient(180deg,rgba(217,180,106,.07),var(--bg2))}
+.cal-cell.empty{opacity:.35;cursor:default}
+.cal-cell.sel{border-color:var(--gold);box-shadow:var(--sh-gold)}
+.bar{height:4px;border-radius:4px;background:var(--line)} .bar>i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--cyan),var(--gold))}
+.modal-bg{position:fixed;inset:0;background:rgba(3,4,6,.75);backdrop-filter:blur(8px);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fade .25s both}
+@media(min-width:768px){.modal-bg{align-items:center}}
+.modal{width:100%;max-width:880px;max-height:92vh;overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:22px 22px 0 0;box-shadow:0 40px 80px -20px #000}
+@media(min-width:768px){.modal{border-radius:22px}}
+#toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);opacity:0;transition:all .3s;z-index:60;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%)}
+@media(min-width:1024px){#toast{bottom:28px}}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.kpi-n{font-size:var(--fs-2xl);font-weight:800;letter-spacing:-.03em;line-height:1}
+table.tb{width:100%;font-size:var(--fs-sm)} .tb th{text-align:left;color:var(--muted);font-weight:600;font-size:var(--fs-xs);letter-spacing:.1em;text-transform:uppercase;padding:.6rem;border-bottom:1px solid var(--line)} .tb td{padding:.6rem;border-bottom:1px solid var(--line)}
+.tb tr:hover td{background:rgba(255,255,255,.015)}
+</style>
+</head>
+<body>
+<div class="flex min-h-screen">
+  <!-- ============ SIDEBAR (desktop) ============ -->
+  <aside class="hidden lg:flex flex-col w-64 shrink-0 border-r p-5 gap-1 sticky top-0 h-screen" style="border-color:var(--line);background:rgba(7,8,11,.6)">
+    <div class="mb-6 px-2">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl grid place-items-center font-extrabold" style="background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1a1408">P</div>
+        <div><div class="font-extrabold tracking-tight leading-tight">PREZUNIC</div><div class="eyebrow" style="font-size:.62rem">Alphaville · B651</div></div>
+      </div>
+    </div>
+    <nav id="nav" class="flex flex-col gap-1"></nav>
+    <div class="mt-auto card p-4">
+      <div class="eyebrow mb-2">Índice de equilíbrio</div>
+      <div id="tfScore" class="text-2xl font-extrabold gtext">—</div>
+      <div class="text-xs dim mt-1">Calculado com TensorFlow.js</div>
+    </div>
+  </aside>
+
+  <main class="flex-1 min-w-0 pb-28 lg:pb-10">
+    <!-- ============ HEADER ============ -->
+    <header class="sticky top-0 z-30 backdrop-blur-xl border-b" style="border-color:var(--line);background:rgba(7,8,11,.72)">
+      <div class="px-4 md:px-8 py-4 flex items-center gap-4 flex-wrap">
+        <div class="min-w-0">
+          <h1 class="text-lg md:text-2xl font-extrabold tracking-tight"><span class="gtext">PREZUNIC</span> <span class="dim">—</span> ALPHAVILLE</h1>
+          <div class="eyebrow mt-1">Escala Operacional</div>
+        </div>
+        <div class="ml-auto flex items-center gap-2 flex-wrap">
+          <select id="monthSel" class="inp mono" style="width:auto"></select>
+          <button class="btn btn-gold" onclick="App.generateNext()">✦ Gerar Próximos Meses</button>
+        </div>
+      </div>
+    </header>
+    <section id="view" class="px-4 md:px-8 py-6"></section>
+  </main>
+</div>
+
+<!-- ============ MOBILE NAV ============ -->
+<nav id="mnav" class="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t grid grid-cols-6 backdrop-blur-xl" style="border-color:var(--line);background:rgba(7,8,11,.9);padding-bottom:env(safe-area-inset-bottom)"></nav>
+
+<div id="modalRoot"></div>
+<div id="toast"><div class="card px-4 py-3 text-sm font-semibold" id="toastMsg"></div></div>
+<input type="file" id="importFile" accept="application/json" class="hidden" />
+
+<script>
+/* =====================================================================
+   PREZUNIC ALPHAVILLE · ESCALA OPERACIONAL
+   Arquitetura: Store (dados + persistência) · Utils · Views · PDF · App
+   ===================================================================== */
+const UNIT = 'PREZUNIC - ALPHAVILLE';
+const UNIT_CODE = 'ALPHAVILLE - B651';
+const LS_KEY = 'prezunic_alphaville_escala_v1';
+const WD = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const WD_S = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+/* ---------------- Utils ---------------- */
+const U = {
+  iso:(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+  date:(iso)=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d)},
+  br:(iso)=>iso.split('-').reverse().join('/'),
+  dot:(iso)=>iso.split('-').reverse().join('.'),
+  wd:(iso)=>U.date(iso).getDay(),
+  ym:(iso)=>iso.slice(0,7),
+  monthLabel:(ym)=>{const [y,m]=ym.split('-').map(Number);return `${MONTHS[m-1]} ${y}`},
+  esc:(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+  norm:(s)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(),
+  sortT:(a,b)=>a[0].localeCompare(b[0]),
+  clone:(o)=>JSON.parse(JSON.stringify(o)),
+};
+
+/* ---------------- Dados originais (fonte) ----------------
+   Formato compacto: "HH:MM=Nome,Nome;HH:MM=Nome" */
+const ALIAS = {'marcia':'Márcia','celia':'Célia Campos'};
+const fixName = n => { n=n.trim(); return ALIAS[U.norm(n)] || n; };
+const P = s => s ? s.split(';').map(x=>{const [t,n]=x.split('=');return [t,n.split(',').map(fixName)]}) : [];
+const F = s => s ? s.split(',').map(fixName) : [];
+const SRC = {
+  // Templates por dia da semana (0=dom ... 6=sáb), baseados em 01–07/10/2026
+  4:{s:P('06:00=Constantino;06:50=Célia Campos,Josania,Phelipe;07:00=Gideon;08:00=Ana;10:00=Alenise;11:00=Karine;13:00=Helena,Lucas,Regina,Simone,Gabriela'),l:P('06:50=Angela;11:00=Maria;13:00=Keila,Waltemir'),f:F('Márcia,Leticia,Keven')},
+  5:{s:P('06:00=Constantino;06:50=Célia Campos,Josania;07:00=Gideon;09:00=Keven;10:00=Marcia;13:00=Helena,Lucas,Regina,Simone,Gabriela'),l:P('06:50=Leticia;11:00=Maria;13:00=Keila,Waltemir'),f:F('Ana,Alenise,Angela,Karine')},
+  6:{s:P('06:00=Constantino;06:50=Célia Campos,Josania,Phelipe;07:00=Gideon;08:00=Ana;09:00=Alenise,Keven;10:00=Karine;13:00=Helena,Lucas,Regina,Márcia,Simone,Gabriela'),l:P('06:50=Angela;10:00=Leticia;13:00=Maria,Keila,Waltemir'),f:[]},
+  1:{s:P('06:00=Constantino;06:50=Célia Campos,Phelipe;07:00=Gideon;08:00=Ana,Keven;09:00=Alenise;10:00=Karine;13:00=Lucas,Márcia,Simone,Gabriela'),l:P('06:50=Angela;10:00=Leticia;13:00=Maria,Keila'),f:F('Helena,Regina,Josania,Waltemir')},
+  2:{s:P('06:50=Célia Campos,Phelipe,Josania;07:00=Gideon;08:00=Ana;09:00=Alenise,Keven;10:00=Karine;13:00=Helena,Lucas,Márcia,Regina,Simone'),l:P('06:50=Angela;10:00=Leticia;13:00=Keila,Waltemir'),f:F('Constantino,Maria,Gabriela')},
+  3:{s:P('06:00=Constantino;06:50=Josania,Alenise,Phelipe;07:00=Gideon;08:00=Ana,Keven;10:00=Karine;13:00=Helena,Márcia,Regina,Gabriela'),l:P('06:50=Angela;10:00=Leticia;13:00=Maria,Waltemir'),f:F('Célia Campos,Simone,Lucas,Keila')},
+};
+const SUN = {
+  G1:{s:P('06:00=Constantino;07:50=Helena,Rainara,Josania;09:00=Keven;11:00=Alenise,Simone,Márcia'),l:P('07:50=Keila;11:00=Maria'),f:F('Ana,Angela,Célia Campos,Lucas,Karine,Leticia,Regina,Gabriela,Waltemir')},
+  G2:{s:P('07:50=Ana,Célia Campos,Karine;11:00=Lucas,Regina,Gabriela'),l:P('06:50=Angela;11:00=Waltemir'),f:F('Constantino,Keila,Josania,Alenise,Helena,Simone,Keven,Maria,Márcia')},
+};
+const SUN_ANCHOR = '2026-10-04'; // domingo do Grupo 1; alterna semanalmente
+const LEADERS = ['Angela','Maria','Keila','Waltemir','Leticia'];
+
+/* ---------------- Store ---------------- */
+const Store = {
+  data:null,
+  defaults(){
+    const names = new Set();
+    [...Object.values(SRC),...Object.values(SUN)].forEach(d=>{d.s.forEach(x=>x[1].forEach(n=>names.add(n)));d.l.forEach(x=>x[1].forEach(n=>names.add(n)));d.f.forEach(n=>names.add(n))});
+    const collabs=[...names].sort((a,b)=>a.localeCompare(b)).map((n,i)=>({id:'c'+i+Date.now().toString(36),name:n,role:LEADERS.includes(n)?'Líder de Operação':'Operador(a)',leader:LEADERS.includes(n),time:Store.firstTime(n)}));
+    return {collabs,days:{},months:[],settings:{created:new Date().toISOString()}};
+  },
+  firstTime(n){for(const d of Object.values(SRC)){for(const [t,ns] of [...d.s,...d.l]) if(ns.includes(n)) return t;}return '08:00'},
+  load(){
+    try{this.data=JSON.parse(localStorage.getItem(LS_KEY))}catch(e){this.data=null}
+    if(!this.data||!this.data.days){this.data=this.defaults();this.genMonth('2026-10');this.save()}
+  },
+  save(){localStorage.setItem(LS_KEY,JSON.stringify(this.data))},
+  sundayGroup(iso){const w=Math.round((U.date(iso)-U.date(SUN_ANCHOR))/(864e5*7));return ((w%2)+2)%2===0?'G1':'G2'},
+  template(iso){const wd=U.wd(iso);return U.clone(wd===0?SUN[this.sundayGroup(iso)]:SRC[wd])},
+  genMonth(ym){
+    const [y,m]=ym.split('-').map(Number);const n=new Date(y,m,0).getDate();
+    for(let d=1;d<=n;d++){const iso=U.iso(new Date(y,m-1,d));if(!this.data.days[iso]) this.data.days[iso]=this.template(iso)}
+    if(!this.data.months.includes(ym)) this.data.months.push(ym);
+    this.data.months.sort();
+  },
+  daysOf(ym){return Object.keys(this.data.days).filter(k=>k.startsWith(ym)).sort()},
+  allDays(){return Object.keys(this.data.days).sort()},
+  day(iso){return this.data.days[iso]},
+  /** Onde a pessoa está no dia: {type:'s'|'l'|'f', time} */
+  locate(iso,name){const d=this.day(iso);if(!d)return null;for(const [t,ns] of d.s) if(ns.includes(name)) return {type:'s',time:t};for(const [t,ns] of d.l) if(ns.includes(name)) return {type:'l',time:t};if(d.f.includes(name)) return {type:'f'};return null},
+  count(d){return {s:d.s.reduce((a,x)=>a+x[1].length,0),l:d.l.reduce((a,x)=>a+x[1].length,0),f:d.f.length}},
+};
+
+/* ---------------- Formatação WhatsApp ---------------- */
+const WA = {
+  day(iso){
+    const d=Store.day(iso);const wd=U.wd(iso);const name=WD[wd];
+    let t=`${name.toUpperCase()}\n\n_*Escala ${name.toLowerCase().replace('-',' ')} ${U.dot(iso)}*_\n\n`;
+    d.s.slice().sort(U.sortT).forEach(([h,ns])=>{t+=`_*${h}*_\n${ns.join('\n')}\n\n`});
+    if(d.l.length){t+=`_*Líderes:*_\n\n`;d.l.slice().sort(U.sortT).forEach(([h,ns])=>{t+=`_*${h}*_\n${ns.join('\n')}\n\n`})}
+    if(d.f.length) t+=`*Folgas:*\n${d.f.join('\n')}\n`;
+    return t.trim();
+  },
+  async send(text){
+    try{await navigator.clipboard.writeText(text);toast('Mensagem copiada · abrindo WhatsApp')}catch(e){toast('Abrindo WhatsApp')}
+    window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+  },
+};
+
+/* ---------------- Toast & Modal ---------------- */
+let toastT;function toast(m,err){const el=document.getElementById('toast');document.getElementById('toastMsg').innerHTML=(err?'<span style="color:var(--rose)">⚠ </span>':'<span class="gold">✓ </span>')+U.esc(m);el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600)}
+function modal(html){document.getElementById('modalRoot').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal fade">${html}</div></div>`}
+function closeModal(){document.getElementById('modalRoot').innerHTML='';App.render()}
+
+/* ---------------- Charts ---------------- */
+const Charts={list:[],clear(){this.list.forEach(c=>c.destroy());this.list=[]},
+  make(id,cfg){const el=document.getElementById(id);if(!el||!window.Chart)return;Chart.defaults.color='#8a91a3';Chart.defaults.font.family='Manrope';Chart.defaults.borderColor='#232836';this.list.push(new Chart(el,cfg))}};
+const grad=(ctx,a,b)=>{const g=ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,a);g.addColorStop(1,b);return g};
+
+/* =====================================================================
+   VIEWS
+   ===================================================================== */
+const NAV=[['dash','Dashboard','◈'],['cal','Calendário','▦'],['search','Busca','⌕'],['stats','Estatísticas','◔'],['team','Equipe','☰'],['export','Exportar','⇪']];
+
+const Views={
+  /* ---------- Dashboard ---------- */
+  dash(){
+    const ym=App.month,days=Store.daysOf(ym);
+    const tot=days.reduce((a,iso)=>{const c=Store.count(Store.day(iso));a.s+=c.s;a.l+=c.l;a.f+=c.f;return a},{s:0,l:0,f:0});
+    const cl=Store.data.collabs;const nL=cl.filter(c=>c.leader).length;
+    const avg=days.length?(tot.s/days.length).toFixed(1):0;
+    const sel=App.sel.startsWith(ym)?App.sel:days[0];
+    return `
+    <div class="flex items-end justify-between flex-wrap gap-3 mb-6 fade"><div><div class="eyebrow">Visão executiva</div><h2 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-1">${U.monthLabel(ym)}</h2></div>
+      <div class="text-sm muted">${days.length} dias de escala · ${days.filter(d=>U.wd(d)===0).length} domingos</div></div>
+    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 stagger">
+      ${kpi('Colaboradores',cl.length-nL,'Operação ativa','var(--cyan)')}
+      ${kpi('Líderes',nL,'Gestão de turno','var(--gold)')}
+      ${kpi('Folgas no mês',tot.f,'Registros','var(--rose)')}
+      ${kpi('Média escalados/dia',avg,'Colaboradores','var(--green)')}
+    </div>
+    <div class="grid lg:grid-cols-3 gap-4 mt-4">
+      <div class="card p-5 lg:col-span-2 fade"><div class="flex justify-between mb-3"><div><div class="eyebrow">Escalados por dia</div><div class="font-bold mt-1">Ritmo operacional</div></div><div class="flex gap-3 text-xs muted items-center"><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--cyan)"></i> Escalados</span><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--gold)"></i> Líderes</span></div></div><div style="height:260px"><canvas id="cDash"></canvas></div></div>
+      <div class="fade">${sel?dayCard(sel,true):''}</div>
+    </div>`;
+  },
+  dashAfter(){
+    const days=Store.daysOf(App.month);const el=document.getElementById('cDash');if(!el)return;const ctx=el.getContext('2d');
+    Charts.make('cDash',{type:'bar',data:{labels:days.map(d=>d.slice(8)+' '+WD_S[U.wd(d)]),datasets:[
+      {label:'Escalados',data:days.map(d=>Store.count(Store.day(d)).s),backgroundColor:grad(ctx,'rgba(95,212,230,.9)','rgba(95,212,230,.15)'),borderRadius:6,stack:'a'},
+      {label:'Líderes',data:days.map(d=>Store.count(Store.day(d)).l),backgroundColor:'rgba(217,180,106,.85)',borderRadius:6,stack:'a'}]},
+      options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,font:{size:10}}},y:{beginAtZero:true,grid:{color:'#1a1e28'}}}}});
+  },
+
+  /* ---------- Calendário ---------- */
+  cal(){
+    const mode=App.calMode;
+    const head=`<div class="flex items-center justify-between flex-wrap gap-3 mb-5 fade">
+      <div><div class="eyebrow">Calendário inteligente</div><h2 class="text-2xl font-extrabold tracking-tight mt-1">${mode==='day'?WD[U.wd(App.sel)]+' · '+U.br(App.sel):mode==='week'?'Semana de '+U.br(weekOf(App.sel)[0]):U.monthLabel(App.month)}</h2></div>
+      <div class="flex gap-2 items-center flex-wrap">
+        <div class="seg">${[['day','Dia'],['week','Semana'],['month','Completa']].map(([k,l])=>`<button class="${mode===k?'on':''}" onclick="App.setCal('${k}')">${l}</button>`).join('')}</div>
+        ${mode!=='month'?`<button class="btn" onclick="App.shift(-1)">‹</button><button class="btn" onclick="App.shift(1)">›</button>`:''}
+        ${mode==='week'?`<button class="btn btn-wa" onclick="App.waWeek()">WhatsApp semana</button>`:''}
+        ${mode==='month'?`<button class="btn btn-wa" onclick="App.waMonth()">WhatsApp mês</button>`:''}
+      </div></div>`;
+    if(mode==='day') return head+`<div class="max-w-3xl fade">${Store.day(App.sel)?dayCard(App.sel,false):'<div class="card p-8 muted">Sem escala para esta data.</div>'}</div>`;
+    if(mode==='week') return head+`<div class="grid md:grid-cols-2 2xl:grid-cols-3 gap-4 stagger">${weekOf(App.sel).filter(d=>Store.day(d)).map(d=>dayCard(d,true)).join('')}</div>`;
+    const [y,m]=App.month.split('-').map(Number);const first=new Date(y,m-1,1).getDay();const n=new Date(y,m,0).getDate();
+    let cells='';for(let i=0;i<first;i++) cells+='<div class="cal-cell empty"></div>';
+    for(let d=1;d<=n;d++){const iso=U.iso(new Date(y,m-1,d));const day=Store.day(iso);const c=day?Store.count(day):{s:0,l:0,f:0};const wd=U.wd(iso);
+      cells+=`<div class="cal-cell ${wd===0?'sun':''} ${iso===App.sel?'sel':''}" onclick="App.openDay('${iso}')">
+        <div class="flex justify-between items-start"><span class="font-extrabold text-lg">${String(d).padStart(2,'0')}</span>${wd===0?`<span class="badge b-lead" style="font-size:.55rem">${Store.sundayGroup(iso)}</span>`:''}</div>
+        <div class="hidden md:flex gap-1 mt-2 flex-wrap text-[10px] mono"><span style="color:var(--cyan)">${c.s}E</span><span class="gold">${c.l}L</span><span style="color:var(--rose)">${c.f}F</span></div>
+        <div class="bar mt-2"><i style="width:${Math.min(100,c.s/18*100)}%"></i></div></div>`}
+    return head+`<div class="card p-3 md:p-5 fade"><div class="grid grid-cols-7 gap-1.5 md:gap-2 mb-2">${WD_S.map(w=>`<div class="eyebrow text-center">${w}</div>`).join('')}</div><div class="grid grid-cols-7 gap-1.5 md:gap-2">${cells}</div></div>`;
+  },
+
+  /* ---------- Busca ---------- */
+  search(){
+    const q=App.q;const names=Store.data.collabs.map(c=>c.name);
+    const match=q?names.filter(n=>U.norm(n).includes(U.norm(q))):[];
+    return `<div class="fade"><div class="eyebrow">Busca inteligente</div><h2 class="text-2xl font-extrabold tracking-tight mt-1 mb-4">Encontre um colaborador</h2>
+      <div class="relative max-w-xl"><input id="q" class="inp" style="padding:.85rem 1rem;font-size:1rem" placeholder="Digite um nome… ex: Helena" value="${U.esc(q)}" oninput="App.q=this.value;App.render(true)" autocomplete="off"/></div>
+      <div class="flex flex-wrap gap-2 mt-3">${(q?match:names.slice(0,12)).map(n=>`<button class="chip hov" onclick="App.q='${U.esc(n)}';App.render()">${U.esc(n)}</button>`).join('')}</div></div>
+      <div class="mt-6">${match.length===1||names.includes(q)?personReport(names.includes(q)?q:match[0]):q&&!match.length?'<div class="card p-6 muted">Nenhum colaborador encontrado.</div>':''}</div>`;
+  },
+
+  /* ---------- Estatísticas ---------- */
+  stats(){
+    return `<div class="fade mb-5"><div class="eyebrow">Inteligência operacional</div><h2 class="text-2xl font-extrabold tracking-tight mt-1">Estatísticas · ${U.monthLabel(App.month)}</h2></div>
+    <div class="grid lg:grid-cols-2 gap-4 stagger">
+      <div class="card p-5"><div class="eyebrow mb-3">Colaboradores por horário</div><div style="height:280px"><canvas id="cTime"></canvas></div></div>
+      <div class="card p-5"><div class="eyebrow mb-3">Distribuição de líderes (turnos no mês)</div><div style="height:280px"><canvas id="cLead"></canvas></div></div>
+      <div class="card p-5 lg:col-span-2"><div class="eyebrow mb-3">Comparativo de escalas · dias úteis × domingos</div><div style="height:280px"><canvas id="cCmp"></canvas></div></div>
+    </div>`;
+  },
+  statsAfter(){
+    const days=Store.daysOf(App.month);const byT={},byL={};
+    days.forEach(iso=>{const d=Store.day(iso);d.s.forEach(([t,ns])=>byT[t]=(byT[t]||0)+ns.length);d.l.forEach(([t,ns])=>ns.forEach(n=>byL[n]=(byL[n]||0)+1))});
+    const ts=Object.keys(byT).sort();const ctx=document.getElementById('cTime').getContext('2d');
+    Charts.make('cTime',{type:'bar',data:{labels:ts,datasets:[{data:ts.map(t=>byT[t]),backgroundColor:grad(ctx,'rgba(95,212,230,.9)','rgba(95,212,230,.1)'),borderRadius:8}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#1a1e28'}}}}});
+    const ls=Object.keys(byL);
+    Charts.make('cLead',{type:'doughnut',data:{labels:ls,datasets:[{data:ls.map(l=>byL[l]),backgroundColor:['#d9b46a','#5fd4e6','#5fe0a1','#a99cf5','#f2788a','#f1d9a3'],borderColor:'#11141b',borderWidth:3}]},options:{maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'right'}}}});
+    const wk=[1,2,3,4,5,6,0];const avg=(f)=>wk.map(w=>{const ds=days.filter(d=>U.wd(d)===w);return ds.length?+(ds.reduce((a,d)=>a+f(Store.count(Store.day(d))),0)/ds.length).toFixed(1):0});
+    Charts.make('cCmp',{type:'line',data:{labels:wk.map(w=>WD_S[w]),datasets:[
+      {label:'Escalados',data:avg(c=>c.s),borderColor:'#5fd4e6',backgroundColor:'rgba(95,212,230,.12)',fill:true,tension:.4,pointRadius:4},
+      {label:'Líderes',data:avg(c=>c.l),borderColor:'#d9b46a',tension:.4,pointRadius:4},
+      {label:'Folgas',data:avg(c=>c.f),borderColor:'#f2788a',borderDash:[5,5],tension:.4,pointRadius:4}]},options:{maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#1a1e28'}}}}});
+  },
+
+  /* ---------- Equipe (editor de colaboradores) ---------- */
+  team(){
+    const cl=Store.data.collabs;
+    return `<div class="flex items-end justify-between flex-wrap gap-3 mb-5 fade"><div><div class="eyebrow">Painel administrativo</div><h2 class="text-2xl font-extrabold tracking-tight mt-1">Equipe · ${cl.length} pessoas</h2></div></div>
+    <div class="card p-5 mb-4 fade"><div class="eyebrow mb-3">Adicionar colaborador</div>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <input id="nName" class="inp col-span-2 md:col-span-1" placeholder="Nome"/>
+        <input id="nRole" class="inp" placeholder="Função" value="Operador(a)"/>
+        <select id="nLead" class="inp"><option value="0">Líder: Não</option><option value="1">Líder: Sim</option></select>
+        <input id="nTime" type="time" class="inp mono" value="08:00"/>
+        <button class="btn btn-gold justify-center col-span-2 md:col-span-1" onclick="App.addCollab()">Adicionar</button>
+      </div></div>
+    <div class="card p-2 md:p-4 overflow-x-auto fade"><table class="tb"><thead><tr><th>Nome</th><th>Função</th><th>Status</th><th>Horário padrão</th><th class="text-right">Ações</th></tr></thead><tbody>
+      ${cl.map(c=>`<tr><td class="font-semibold">${U.esc(c.name)}</td><td class="muted">${U.esc(c.role)}</td><td>${c.leader?'<span class="badge b-lead">Líder</span>':'<span class="badge b-on">Escalado</span>'}</td><td><span class="time">${c.time}</span></td>
+      <td class="text-right whitespace-nowrap"><button class="btn btn-sm" onclick="App.editCollab('${c.id}')">Editar</button> <button class="btn btn-sm btn-danger" onclick="App.delCollab('${c.id}')">Excluir</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  },
+
+  /* ---------- Exportar ---------- */
+  export(){
+    const days=Store.allDays();const names=Store.data.collabs.map(c=>c.name);
+    return `<div class="fade mb-5"><div class="eyebrow">Central de exportação</div><h2 class="text-2xl font-extrabold tracking-tight mt-1">Relatórios, WhatsApp & Backup</h2></div>
+    <div class="grid lg:grid-cols-2 gap-4 stagger">
+      <div class="card p-5"><div class="eyebrow mb-1">PDF corporativo</div><div class="text-sm muted mb-4">Pré-visualização antes do download · processamento 100% local.</div>
+        <label class="text-xs muted">Data de referência</label><input id="exDate" type="date" class="inp mono mb-3" value="${App.sel}" min="${days[0]}" max="${days[days.length-1]}"/>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="btn justify-center" onclick="PDF.preview('day')">Exportar Dia</button>
+          <button class="btn justify-center" onclick="PDF.preview('week')">Exportar Semana</button>
+          <button class="btn justify-center" onclick="PDF.preview('month')">Exportar Mês</button>
+          <button class="btn btn-gold justify-center" onclick="PDF.preview('full')">Escala Completa</button>
+        </div></div>
+      <div class="card p-5"><div class="eyebrow mb-1">Período & colaborador</div><div class="text-sm muted mb-4">Selecione intervalo ou relatório individual.</div>
+        <div class="grid grid-cols-2 gap-2 mb-2"><input id="exFrom" type="date" class="inp mono" value="${days[0]}"/><input id="exTo" type="date" class="inp mono" value="${days[Math.min(6,days.length-1)]}"/></div>
+        <button class="btn w-full justify-center mb-4" onclick="PDF.preview('range')">Exportar Período</button>
+        <select id="exPerson" class="inp mb-2">${names.map(n=>`<option>${U.esc(n)}</option>`).join('')}</select>
+        <button class="btn w-full justify-center" onclick="PDF.preview('person')">Exportar Colaborador</button></div>
+      <div class="card p-5"><div class="eyebrow mb-1">WhatsApp</div><div class="text-sm muted mb-4">Mensagem formatada, copiada e aberta via wa.me.</div>
+        <div class="grid grid-cols-3 gap-2"><button class="btn btn-wa justify-center" onclick="App.sel=document.getElementById('exDate').value;App.waDay(App.sel)">Dia</button><button class="btn btn-wa justify-center" onclick="App.sel=document.getElementById('exDate').value;App.waWeek()">Semana</button><button class="btn btn-wa justify-center" onclick="App.waMonth()">Mês</button></div></div>
+      <div class="card p-5"><div class="eyebrow mb-1">Backup & restauração</div><div class="text-sm muted mb-4">Colaboradores, escalas e configurações em JSON. Dados salvos automaticamente neste navegador.</div>
+        <div class="grid grid-cols-2 gap-2"><button class="btn justify-center" onclick="App.backup()">Exportar Backup</button><button class="btn justify-center" onclick="document.getElementById('importFile').click()">Importar Backup</button></div>
+        <button class="btn btn-sm btn-danger mt-3" onclick="App.reset()">Restaurar escala original</button></div>
+    </div>`;
+  },
+};
+
+/* ---------------- Componentes ---------------- */
+function kpi(l,n,s,c){return `<div class="card hov p-4 md:p-5 relative overflow-hidden"><div class="absolute -right-6 -top-6 w-24 h-24 rounded-full" style="background:${c};opacity:.08;filter:blur(10px)"></div><div class="eyebrow">${l}</div><div class="kpi-n mt-3" style="color:${c}">${n}</div><div class="text-xs dim mt-2">${s}</div></div>`}
+function weekOf(iso){const d=U.date(iso);const off=(d.getDay()+6)%7;const r=[];for(let i=0;i<7;i++){const x=new Date(d);x.setDate(d.getDate()-off+i);r.push(U.iso(x))}return r}
+function dayCard(iso,compact){
+  const d=Store.day(iso);if(!d)return'';const c=Store.count(d);const wd=U.wd(iso);
+  const sec=(title,arr,cls)=>arr.length?`<div class="mt-4"><div class="eyebrow mb-2">${title}</div><div class="flex flex-col gap-2">${arr.slice().sort(U.sortT).map(([t,ns])=>`<div class="flex gap-3 items-start"><span class="time mt-1">${t}</span><div class="flex flex-wrap gap-1.5">${ns.map(n=>`<span class="chip ${cls}">${U.esc(n)}</span>`).join('')}</div></div>`).join('')}</div></div>`:'';
+  return `<div class="card hov p-5">
+    <div class="flex justify-between items-start gap-2"><div><div class="eyebrow">${WD[wd]}${wd===0?' · '+(Store.sundayGroup(iso)==='G1'?'Grupo 1':'Grupo 2'):''}</div><div class="text-2xl font-extrabold tracking-tight mt-1 mono">${U.br(iso)}</div></div>
+      <div class="flex gap-1.5 flex-wrap justify-end"><span class="badge b-on">${c.s} escalados</span><span class="badge b-lead">${c.l} líderes</span><span class="badge b-off">${c.f} folgas</span></div></div>
+    ${sec('Colaboradores',d.s,'')}${sec('Líderes',d.l,'lead')}
+    ${d.f.length?`<div class="mt-4"><div class="eyebrow mb-2">Folgas</div><div class="flex flex-wrap gap-1.5">${d.f.map(n=>`<span class="chip off">${U.esc(n)}</span>`).join('')}</div></div>`:''}
+    <div class="flex gap-2 mt-5 pt-4 border-t flex-wrap" style="border-color:var(--line)">
+      <button class="btn btn-wa btn-sm" onclick="App.waDay('${iso}')">Enviar para WhatsApp</button>
+      <button class="btn btn-sm" onclick="App.openEditor('${iso}')">Editar escala</button>
+      <button class="btn btn-sm" onclick="App.sel='${iso}';PDF.preview('day')">PDF</button>
+      ${compact?`<button class="btn btn-sm ml-auto" onclick="App.sel='${iso}';App.setCal('day')">Abrir ›</button>`:''}
+    </div></div>`;
+}
+function personData(name,days){
+  const r={work:[],off:[],sun:[],times:{}};
+  days.forEach(iso=>{const loc=Store.locate(iso,name);if(!loc)return;if(loc.type==='f')r.off.push(iso);else{r.work.push([iso,loc.time,loc.type]);r.times[loc.time]=(r.times[loc.time]||0)+1;if(U.wd(iso)===0)r.sun.push(iso)}});return r;
+}
+function personReport(name){
+  const days=Store.daysOf(App.month);const r=personData(name,days);const c=Store.data.collabs.find(x=>x.name===name);
+  return `<div class="card p-5 md:p-6 fade"><div class="flex justify-between items-start flex-wrap gap-3"><div><div class="eyebrow">${U.monthLabel(App.month)}</div><h3 class="text-2xl font-extrabold mt-1">${U.esc(name)}</h3><div class="flex gap-2 mt-2">${c&&c.leader?'<span class="badge b-lead">Líder</span>':'<span class="badge b-on">Escalado</span>'}<span class="text-sm muted">${c?U.esc(c.role):''}</span></div></div>
+    <button class="btn" onclick="document.getElementById('exPerson')||0;PDF.preview('person','${U.esc(name)}')">Relatório PDF</button></div>
+    <div class="grid grid-cols-3 gap-3 mt-5">${kpi('Dias trabalhados',r.work.length,'no mês','var(--cyan)')}${kpi('Folgas',r.off.length,'no mês','var(--rose)')}${kpi('Domingos',r.sun.length,'escalados','var(--gold)')}</div>
+    <div class="mt-5"><div class="eyebrow mb-2">Horários</div><div class="flex gap-2 flex-wrap">${Object.entries(r.times).map(([t,n])=>`<span class="chip"><span class="time">${t}</span> ${n}×</span>`).join('')||'<span class="muted">—</span>'}</div></div>
+    <div class="mt-5 grid md:grid-cols-2 gap-4"><div><div class="eyebrow mb-2">Dias escalados</div><div class="flex flex-wrap gap-1.5">${r.work.map(([d,t,ty])=>`<span class="chip ${ty==='l'?'lead':''}">${d.slice(8)}/${d.slice(5,7)} ${WD_S[U.wd(d)]} <span class="time">${t}</span></span>`).join('')}</div></div>
+    <div><div class="eyebrow mb-2">Folgas</div><div class="flex flex-wrap gap-1.5">${r.off.map(d=>`<span class="chip off">${d.slice(8)}/${d.slice(5,7)} ${WD_S[U.wd(d)]}</span>`).join('')||'<span class="muted">—</span>'}</div></div></div></div>`;
+}
+
+/* =====================================================================
+   EDITOR DE ESCALA (modal)
+   ===================================================================== */
+const Editor={
+  iso:null,
+  html(){
+    const iso=this.iso,d=Store.day(iso);const used=new Set([...d.s.flatMap(x=>x[1]),...d.l.flatMap(x=>x[1]),...d.f]);
+    const free=Store.data.collabs.map(c=>c.name).filter(n=>!used.has(n));
+    const opts=(list)=>`<option value="">+ adicionar</option>`+list.map(n=>`<option>${U.esc(n)}</option>`).join('');
+    const block=(key,title,cls)=>`<div class="mt-5"><div class="flex justify-between items-center mb-2"><div class="eyebrow">${title}</div><button class="btn btn-sm" onclick="Editor.addSlot('${key}')">+ Horário</button></div>
+      <div class="flex flex-col gap-2">${d[key].map(([t,ns],i)=>`<div class="card p-3 flex flex-col md:flex-row gap-2 md:items-center">
+        <input type="time" value="${t}" class="inp mono" style="width:120px" onchange="Editor.setTime('${key}',${i},this.value)"/>
+        <div class="flex flex-wrap gap-1.5 flex-1">${ns.map((n,j)=>`<span class="chip ${cls}">${U.esc(n)}<select class="bg-transparent text-xs dim outline-none" title="Mover" onchange="Editor.move('${key}',${i},${j},this.value)"><option value="">⇄</option>${d.s.map(x=>`<option value="s|${x[0]}">${x[0]}</option>`).join('')}${d.l.map(x=>`<option value="l|${x[0]}">Líder ${x[0]}</option>`).join('')}<option value="f|">Folga</option></select><button onclick="Editor.rm('${key}',${i},${j})">✕</button></span>`).join('')}</div>
+        <select class="inp" style="width:auto" onchange="Editor.add('${key}',${i},this.value)">${opts(key==='l'?free.filter(n=>(Store.data.collabs.find(c=>c.name===n)||{}).leader).concat(free.filter(n=>!(Store.data.collabs.find(c=>c.name===n)||{}).leader)):free)}</select>
+        <button class="btn btn-sm btn-danger" onclick="Editor.rmSlot('${key}',${i})">Remover</button></div>`).join('')}</div></div>`;
+    return `<div class="p-5 md:p-7"><div class="flex justify-between items-start"><div><div class="eyebrow">Editor de escala</div><h3 class="text-2xl font-extrabold mt-1">${WD[U.wd(iso)]} · <span class="mono">${U.br(iso)}</span></h3></div><button class="btn" onclick="closeModal()">Fechar</button></div>
+      ${block('s','Colaboradores','')}${block('l','Líderes','lead')}
+      <div class="mt-5"><div class="eyebrow mb-2">Folgas</div><div class="flex flex-wrap gap-1.5 items-center">${d.f.map((n,j)=>`<span class="chip off">${U.esc(n)}<button onclick="Editor.rmOff(${j})">✕</button></span>`).join('')}
+        <select class="inp" style="width:auto" onchange="Editor.addOff(this.value)">${opts(free)}</select></div></div>
+      <div class="text-xs dim mt-5">Alterações salvas automaticamente. O sistema impede duplicidade e conflitos de horário no mesmo dia.</div></div>`;
+  },
+  open(iso){this.iso=iso;modal(this.html())},
+  refresh(){Store.save();document.querySelector('.modal').innerHTML=this.html();App.updateTF()},
+  d(){return Store.day(this.iso)},
+  conflict(name){const loc=Store.locate(this.iso,name);if(loc){toast(`${name} já está ${loc.type==='f'?'de folga':'escalado(a) às '+loc.time} neste dia`,1);return true}return false},
+  add(k,i,n){if(!n||this.conflict(n))return this.refresh();this.d()[k][i][1].push(n);this.refresh();toast(n+' adicionado(a)')},
+  rm(k,i,j){this.d()[k][i][1].splice(j,1);this.refresh()},
+  move(k,i,j,target){if(!target)return;const [tk,tt]=target.split('|');const n=this.d()[k][i][1].splice(j,1)[0];if(tk==='f')this.d().f.push(n);else this.d()[tk].find(x=>x[0]===tt)[1].push(n);this.refresh();toast(n+' movido(a)')},
+  addSlot(k){const used=this.d()[k].map(x=>x[0]);let t=prompt('Novo horário (HH:MM):','08:00');if(!t)return;if(!/^\d{2}:\d{2}$/.test(t))return toast('Horário inválido',1);if(used.includes(t))return toast('Horário já existe',1);this.d()[k].push([t,[]]);this.d()[k].sort(U.sortT);this.refresh()},
+  setTime(k,i,t){if(this.d()[k].some((x,ix)=>ix!==i&&x[0]===t)){toast('Horário sobreposto · já existe '+t,1);return this.refresh()}this.d()[k][i][0]=t;this.d()[k].sort(U.sortT);this.refresh()},
+  rmSlot(k,i){const s=this.d()[k][i];if(s[1].length&&!confirm(`Remover horário ${s[0]} e ${s[1].length} pessoa(s)?`))return;this.d()[k].splice(i,1);this.refresh()},
+  addOff(n){if(!n||this.conflict(n))return this.refresh();this.d().f.push(n);this.refresh()},
+  rmOff(j){this.d().f.splice(j,1);this.refresh()},
+};
+
+/* =====================================================================
+   PDF (jsPDF + autoTable) · fundo claro, cabeçalho/rodapé, paginação
+   ===================================================================== */
+const PDF={
+  doc(){const {jsPDF}=window.jspdf;return new jsPDF({unit:'mm',format:'a4'})},
+  header(doc,title,sub){const w=doc.internal.pageSize.getWidth();doc.setFillColor(17,20,27);doc.rect(0,0,w,26,'F');doc.setFillColor(217,180,106);doc.rect(0,26,w,1.2,'F');
+    doc.setTextColor(241,217,163);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(UNIT,14,11);doc.setTextColor(200,204,214);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.text('ESCALA OPERACIONAL',14,17);
+    doc.setTextColor(255);doc.setFontSize(10);doc.text(title,w-14,11,{align:'right'});if(sub){doc.setFontSize(8);doc.setTextColor(170);doc.text(sub,w-14,17,{align:'right'})}doc.setTextColor(30)},
+  footer(doc){const n=doc.getNumberOfPages(),w=doc.internal.pageSize.getWidth(),h=doc.internal.pageSize.getHeight();for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(220);doc.line(14,h-14,w-14,h-14);doc.setFontSize(7.5);doc.setTextColor(130);doc.text(`${UNIT_CODE} · Documento gerado em ${new Date().toLocaleString('pt-BR')}`,14,h-9);doc.text(`Página ${i} de ${n}`,w-14,h-9,{align:'right'})}},
+  dayTable(doc,iso,y){
+    const d=Store.day(iso);const c=Store.count(d);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(20);doc.text(`${WD[U.wd(iso)]} · ${U.br(iso)}`,14,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120);doc.text(`${c.s} escalados  ·  ${c.l} líderes  ·  ${c.f} folgas${U.wd(iso)===0?'  ·  Domingo '+(Store.sundayGroup(iso)==='G1'?'Grupo 1':'Grupo 2'):''}`,14,y+5);
+    const body=[...d.s.slice().sort(U.sortT).map(([t,n])=>['Escalado',t,n.join(', ')]),...d.l.slice().sort(U.sortT).map(([t,n])=>['Líder',t,n.join(', ')])];if(d.f.length)body.push(['Folga','—',d.f.join(', ')]);
+    doc.autoTable({startY:y+8,head:[['Categoria','Horário','Colaboradores']],body,theme:'grid',styles:{fontSize:8.5,cellPadding:2.2,lineColor:[228,228,232]},headStyles:{fillColor:[28,32,42],textColor:[241,217,163]},columnStyles:{0:{cellWidth:24,fontStyle:'bold'},1:{cellWidth:20,font:'courier'}},
+      didParseCell:(h)=>{if(h.section==='body'){const k=h.row.raw[0];if(k==='Líder')h.cell.styles.fillColor=[252,246,232];if(k==='Folga')h.cell.styles.fillColor=[253,238,240]}},margin:{left:14,right:14,bottom:20}});
+    return doc.lastAutoTable.finalY+10;
+  },
+  days(doc,list,y=36){list.forEach(iso=>{if(y>230){doc.addPage();y=36}y=this.dayTable(doc,iso,y)});return y},
+  summary(doc,list,y){const t=list.reduce((a,iso)=>{const c=Store.count(Store.day(iso));a.s+=c.s;a.l+=c.l;a.f+=c.f;return a},{s:0,l:0,f:0});
+    doc.autoTable({startY:y,head:[['Dias','Escalações','Turnos de líder','Folgas','Média/dia']],body:[[list.length,t.s,t.l,t.f,(t.s/list.length||0).toFixed(1)]],theme:'plain',styles:{fontSize:10,halign:'center'},headStyles:{textColor:[140,110,50],fontStyle:'bold'},margin:{left:14,right:14}});return doc.lastAutoTable.finalY+8},
+  build(kind,arg){
+    const doc=this.doc();const ref=(document.getElementById('exDate')||{}).value||App.sel;let name;
+    if(kind==='day'){this.header(doc,'Escala Diária',U.br(ref));this.dayTable(doc,ref,38);name=`Escala_${U.br(ref).replace(/\//g,'-')}.pdf`}
+    else if(kind==='week'||kind==='range'){let list=kind==='week'?weekOf(ref).filter(d=>Store.day(d)):Store.allDays().filter(d=>d>=document.getElementById('exFrom').value&&d<=document.getElementById('exTo').value);
+      if(!list.length)return toast('Período sem escala',1);this.header(doc,kind==='week'?'Escala Semanal':'Escala por Período',`${U.br(list[0])} a ${U.br(list[list.length-1])}`);
+      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Resumo operacional',14,36);let y=this.summary(doc,list,39);this.days(doc,list,y);name=kind==='week'?'Escala_Semanal.pdf':`Escala_${list[0]}_a_${list[list.length-1]}.pdf`}
+    else if(kind==='month'){const ym=U.ym(ref);const list=Store.daysOf(ym);this.header(doc,'Escala Mensal',U.monthLabel(ym));doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Estatísticas do mês',14,36);let y=this.summary(doc,list,39);
+      const sun=list.filter(d=>U.wd(d)===0);doc.autoTable({startY:y,head:[['Domingos alternados','Grupo','Escalados']],body:sun.map(d=>[U.br(d),Store.sundayGroup(d)==='G1'?'Grupo 1':'Grupo 2',Store.count(Store.day(d)).s]),theme:'striped',styles:{fontSize:9},headStyles:{fillColor:[28,32,42],textColor:[241,217,163]},margin:{left:14,right:14}});
+      doc.addPage();this.days(doc,list,36);const [yy,mm]=ym.split('-');name=`Escala_${MONTHS[+mm-1]}_${yy}.pdf`}
+    else if(kind==='full'){const list=Store.allDays();const w=doc.internal.pageSize.getWidth(),h=doc.internal.pageSize.getHeight();
+      doc.setFillColor(12,14,19);doc.rect(0,0,w,h,'F');doc.setFillColor(217,180,106);doc.rect(20,110,40,1.5,'F');doc.setTextColor(241,217,163);doc.setFont('helvetica','bold');doc.setFontSize(30);doc.text(UNIT_CODE,20,100);doc.setTextColor(255);doc.setFontSize(18);doc.setFont('helvetica','normal');doc.text('Escala Operacional 2026',20,125);doc.setFontSize(10);doc.setTextColor(150);doc.text(`${UNIT}  ·  ${U.br(list[0])} a ${U.br(list[list.length-1])}`,20,135);
+      doc.addPage();this.header(doc,'Relatório Executivo','Sumário');doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('Sumário',14,42);doc.setFont('helvetica','normal');doc.setFontSize(11);['1. Indicadores operacionais','2. Distribuição de horários','3. Distribuição de líderes','4. Escalas de domingo','5. Escalas diárias','6. Relatório geral por colaborador'].forEach((s,i)=>doc.text(s,18,54+i*8));
+      doc.addPage();this.header(doc,'Relatório Executivo','Indicadores');doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('1. Indicadores operacionais',14,38);let y=this.summary(doc,list,41);
+      const byT={},byL={};list.forEach(iso=>{const d=Store.day(iso);d.s.forEach(([t,ns])=>byT[t]=(byT[t]||0)+ns.length);d.l.forEach(([t,ns])=>ns.forEach(n=>byL[n]=(byL[n]||0)+1))});
+      doc.text('2. Distribuição de horários',14,y);doc.autoTable({startY:y+3,head:[['Horário','Escalações']],body:Object.keys(byT).sort().map(t=>[t,byT[t]]),theme:'striped',styles:{fontSize:9},headStyles:{fillColor:[28,32,42],textColor:[241,217,163]},margin:{left:14,right:110}});y=doc.lastAutoTable.finalY+8;
+      doc.text('3. Distribuição de líderes',14,y);doc.autoTable({startY:y+3,head:[['Líder','Turnos']],body:Object.entries(byL).map(([n,c])=>[n,c]),theme:'striped',styles:{fontSize:9},headStyles:{fillColor:[28,32,42],textColor:[241,217,163]},margin:{left:14,right:110}});
+      doc.addPage();this.header(doc,'Relatório Executivo','Domingos');doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('4. Escalas de domingo',14,38);this.days(doc,list.filter(d=>U.wd(d)===0),46);
+      doc.addPage();this.header(doc,'Relatório Executivo','Escalas diárias');doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('5. Escalas diárias',14,38);this.days(doc,list.filter(d=>U.wd(d)!==0),46);
+      doc.addPage();this.header(doc,'Relatório Executivo','Relatório geral');doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('6. Relatório geral por colaborador',14,38);
+      doc.autoTable({startY:42,head:[['Colaborador','Função','Dias trab.','Folgas','Domingos']],body:Store.data.collabs.map(c=>{const r=personData(c.name,list);return [c.name,c.leader?'Líder':c.role,r.work.length,r.off.length,r.sun.length]}),theme:'striped',styles:{fontSize:9},headStyles:{fillColor:[28,32,42],textColor:[241,217,163]},margin:{left:14,right:14,bottom:20}});
+      name='Escala_Completa_2026.pdf'}
+    else if(kind==='person'){const n=arg||document.getElementById('exPerson').value;const list=Store.allDays();const r=personData(n,list);const c=Store.data.collabs.find(x=>x.name===n);
+      this.header(doc,'Relatório Individual',n);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(n,14,42);doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(120);doc.text(`${c?c.role:''}${c&&c.leader?' · Líder':''}  ·  Período ${U.br(list[0])} a ${U.br(list[list.length-1])}`,14,49);
+      doc.autoTable({startY:55,head:[['Dias trabalhados','Folgas','Domingos escalados','Horários']],body:[[r.work.length,r.off.length,r.sun.length,Object.entries(r.times).map(([t,k])=>`${t} (${k}x)`).join(', ')]],theme:'plain',styles:{fontSize:10},headStyles:{textColor:[140,110,50]},margin:{left:14,right:14}});
+      doc.autoTable({startY:doc.lastAutoTable.finalY+6,head:[['Data','Dia','Situação','Horário']],body:list.map(d=>{const l=Store.locate(d,n);return [U.br(d),WD[U.wd(d)],!l?'—':l.type==='f'?'Folga':l.type==='l'?'Líder':'Escalado',l&&l.time||'—']}),theme:'grid',styles:{fontSize:8.5},headStyles:{fillColor:[28,32,42],textColor:[241,217,163]},didParseCell:h=>{if(h.section==='body'&&h.row.raw[2]==='Folga')h.cell.styles.fillColor=[253,238,240]},margin:{left:14,right:14,bottom:20}});
+      name=`Relatorio_${n.replace(/\s+/g,'_')}.pdf`}
+    this.footer(doc);return {doc,name};
+  },
+  preview(kind,arg){
+    if(!window.jspdf)return toast('Biblioteca PDF carregando…',1);
+    setTimeout(()=>{const r=this.build(kind,arg);if(!r)return;const url=URL.createObjectURL(r.doc.output('blob'));this.cur=r;
+      modal(`<div class="p-4 md:p-6"><div class="flex justify-between items-center gap-2 mb-3 flex-wrap"><div><div class="eyebrow">Pré-visualização</div><div class="font-bold mono text-sm mt-1">${U.esc(r.name)}</div></div><div class="flex gap-2"><button class="btn" onclick="closeModal()">Fechar</button><button class="btn btn-gold" onclick="PDF.cur.doc.save(PDF.cur.name);toast('Download iniciado')">Baixar PDF</button></div></div>
+      <iframe src="${url}" class="w-full rounded-xl" style="height:70vh;background:#fff;border:1px solid var(--line)"></iframe></div>`)},10);
+  },
+};
+
+/* =====================================================================
+   APP (estado de UI + ações)
+   ===================================================================== */
+const App={
+  view:'dash',calMode:'week',month:'2026-10',sel:'2026-10-01',q:'',
+  init(){
+    Store.load();
+    this.renderNav();this.renderMonths();this.render();
+    document.getElementById('importFile').addEventListener('change',e=>this.restore(e.target.files[0]));
+    window.addEventListener('load',()=>setTimeout(()=>this.updateTF(),400));
+  },
+  renderNav(){
+    document.getElementById('nav').innerHTML=NAV.map(([k,l,i])=>`<div class="nav-i ${this.view===k?'on':''}" onclick="App.go('${k}')"><span class="w-5 text-center">${i}</span>${l}</div>`).join('')+`<div class="mt-4"></div>`;
+    document.getElementById('mnav').innerHTML=NAV.map(([k,l,i])=>`<button class="py-2.5 flex flex-col items-center gap-0.5 text-[10px] font-semibold ${this.view===k?'gold':'muted'}" onclick="App.go('${k}')"><span class="text-base">${i}</span>${l}</button>`).join('');
+  },
+  renderMonths(){const s=document.getElementById('monthSel');s.innerHTML=Store.data.months.map(m=>`<option value="${m}" ${m===this.month?'selected':''}>${U.monthLabel(m)}</option>`).join('');s.onchange=()=>{this.month=s.value;this.sel=Store.daysOf(s.value)[0];this.render()}},
+  go(v){this.view=v;this.renderNav();this.render();window.scrollTo({top:0,behavior:'smooth'})},
+  render(keepFocus){
+    Charts.clear();const el=document.getElementById('view');el.innerHTML=Views[this.view]();
+    const after=Views[this.view+'After'];if(after)setTimeout(()=>after(),20);
+    if(keepFocus){const q=document.getElementById('q');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}
+  },
+  setCal(m){this.view='cal';this.calMode=m;this.renderNav();this.render()},
+  shift(n){const all=Store.allDays();const d=U.date(this.sel);d.setDate(d.getDate()+(this.calMode==='week'?7*n:n));let iso=U.iso(d);if(iso<all[0])iso=all[0];if(iso>all[all.length-1])iso=all[all.length-1];this.sel=iso;this.month=U.ym(iso);this.renderMonths();this.render()},
+  openDay(iso){this.sel=iso;this.calMode='day';this.render()},
+  openEditor(iso){Editor.open(iso)},
+  waDay(iso){WA.send(WA.day(iso))},
+  waWeek(){WA.send(weekOf(this.sel).filter(d=>Store.day(d)).map(d=>WA.day(d)).join('\n\n━━━━━━━━━━\n\n'))},
+  waMonth(){WA.send(`*${UNIT}*\n*Escala ${U.monthLabel(this.month)}*\n\n`+Store.daysOf(this.month).map(d=>WA.day(d)).join('\n\n━━━━━━━━━━\n\n'))},
+  generateNext(){['2026-11','2026-12','2027-01'].forEach(m=>Store.genMonth(m));Store.save();this.month='2026-11';this.sel='2026-11-01';this.renderMonths();this.render();this.updateTF();toast('Novembro, Dezembro e Janeiro gerados')},
+  addCollab(){const name=document.getElementById('nName').value.trim();if(!name)return toast('Informe o nome',1);if(Store.data.collabs.some(c=>U.norm(c.name)===U.norm(name)))return toast('Colaborador já cadastrado',1);
+    Store.data.collabs.push({id:'c'+Date.now().toString(36),name,role:document.getElementById('nRole').value.trim()||'Operador(a)',leader:document.getElementById('nLead').value==='1',time:document.getElementById('nTime').value||'08:00'});Store.save();this.render();toast(name+' adicionado(a)')},
+  editCollab(id){const c=Store.data.collabs.find(x=>x.id===id);
+    modal(`<div class="p-6"><div class="eyebrow">Editar colaborador</div><h3 class="text-xl font-extrabold mt-1 mb-4">${U.esc(c.name)}</h3><div class="grid gap-3">
+      <label class="text-xs muted">Nome<input id="eName" class="inp mt-1" value="${U.esc(c.name)}"/></label><label class="text-xs muted">Função<input id="eRole" class="inp mt-1" value="${U.esc(c.role)}"/></label>
+      <div class="grid grid-cols-2 gap-3"><label class="text-xs muted">Líder<select id="eLead" class="inp mt-1"><option value="0">Não</option><option value="1" ${c.leader?'selected':''}>Sim</option></select></label><label class="text-xs muted">Horário padrão<input id="eTime" type="time" class="inp mono mt-1" value="${c.time}"/></label></div>
+      <div class="flex gap-2 justify-end mt-2"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="App.saveCollab('${id}')">Salvar</button></div></div></div>`)},
+  saveCollab(id){const c=Store.data.collabs.find(x=>x.id===id);const nn=document.getElementById('eName').value.trim();if(!nn)return toast('Nome inválido',1);
+    if(nn!==c.name&&Store.data.collabs.some(x=>U.norm(x.name)===U.norm(nn)))return toast('Nome já existe',1);
+    if(nn!==c.name){const old=c.name;Object.values(Store.data.days).forEach(d=>{[...d.s,...d.l].forEach(x=>x[1]=x[1].map(n=>n===old?nn:n));d.f=d.f.map(n=>n===old?nn:n)})}
+    Object.assign(c,{name:nn,role:document.getElementById('eRole').value.trim(),leader:document.getElementById('eLead').value==='1',time:document.getElementById('eTime').value});Store.save();closeModal();toast('Colaborador atualizado')},
+  delCollab(id){const c=Store.data.collabs.find(x=>x.id===id);if(!confirm(`Excluir ${c.name} definitivamente? Ele(a) será removido(a) de todas as escalas.`))return;
+    Object.values(Store.data.days).forEach(d=>{[...d.s,...d.l].forEach(x=>x[1]=x[1].filter(n=>n!==c.name));d.f=d.f.filter(n=>n!==c.name)});Store.data.collabs=Store.data.collabs.filter(x=>x.id!==id);Store.save();this.render();toast('Colaborador excluído')},
+  backup(){const blob=new Blob([JSON.stringify({app:'prezunic-escala',version:1,exported:new Date().toISOString(),...Store.data},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Backup_Escala_${U.iso(new Date())}.json`;a.click();toast('Backup exportado')},
+  restore(file){if(!file)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.collabs)||typeof d.days!=='object')throw 0;Store.data={collabs:d.collabs,days:d.days,months:d.months||[...new Set(Object.keys(d.days).map(U.ym))].sort(),settings:d.settings||{}};Store.save();this.month=Store.data.months[0];this.sel=Store.daysOf(this.month)[0];this.renderMonths();this.render();toast('Backup restaurado')}catch(e){toast('Arquivo de backup inválido',1)}};r.readAsText(file)},
+  reset(){if(!confirm('Restaurar a escala original? Todas as alterações serão perdidas.'))return;localStorage.removeItem(LS_KEY);Store.load();this.month='2026-10';this.sel='2026-10-01';this.renderMonths();this.render();toast('Escala original restaurada')},
+  /** TensorFlow.js: índice de equilíbrio = 100 - coeficiente de variação das escalações por colaborador */
+  updateTF(){if(!window.tf)return;const days=Store.allDays();const counts=Store.data.collabs.map(c=>personData(c.name,days).work.length).filter(n=>n>0);if(!counts.length)return;
+    const t=tf.tensor1d(counts);const {mean,variance}=tf.moments(t);const cv=Math.sqrt(variance.dataSync()[0])/mean.dataSync()[0];tf.dispose([t,mean,variance]);document.getElementById('tfScore').textContent=Math.max(0,Math.round(100-cv*100))+'%'},
+};
+App.init();
+</script>
+</body>
+</html>
